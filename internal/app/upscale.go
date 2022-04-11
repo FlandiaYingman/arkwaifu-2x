@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/dto"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/sr"
 	"github.com/pterm/pterm"
+	"golang.org/x/sync/errgroup"
 )
 
 func UpscaleAssets(assets []dto.Asset) ([]dto.Variant, error) {
@@ -16,7 +18,7 @@ func UpscaleAssets(assets []dto.Asset) ([]dto.Variant, error) {
 	vs := make([]dto.Variant, 0, len(assets))
 	for _, a := range assets {
 		progressbar.UpdateTitle(fmt.Sprintf("Upscaling the asset %s...", a.Name))
-		v, err := upscale(a)
+		v, err := upscaleParallel(a)
 		if err != nil {
 			pterm.Error.Printfln("Failed to upscale the asset %s.", a.Name)
 			return nil, err
@@ -28,13 +30,29 @@ func UpscaleAssets(assets []dto.Asset) ([]dto.Variant, error) {
 	return vs, nil
 }
 
-func upscale(asset dto.Asset) ([]dto.Variant, error) {
-	var vs []dto.Variant
+// 8 - 7m14s
+func upscaleParallel(asset dto.Asset) ([]dto.Variant, error) {
+	eg, _ := errgroup.WithContext(context.Background())
+	vc := make(chan dto.Variant, len(asset.UpscalableVariants))
 	for _, v := range asset.UpscalableVariants {
-		v, err := up(asset.Variants["img"], v)
-		if err != nil {
-			return nil, err
-		}
+		v := v
+		eg.Go(func() error {
+			v, err := up(asset.Variants["img"], v)
+			if err != nil {
+				return err
+			}
+			vc <- v
+			return nil
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
+	}
+	close(vc)
+
+	var vs []dto.Variant
+	for v := range vc {
 		vs = append(vs, v)
 	}
 	return vs, nil

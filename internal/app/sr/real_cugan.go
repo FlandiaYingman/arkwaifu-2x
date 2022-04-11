@@ -63,7 +63,7 @@ func (m *cugan) Up(v dto.Variant, dir string) (dto.Variant, error) {
 	srcV := v
 	interV := srcV
 	interV.Variant = m.Name
-	interV.Filename = pathutil.ReplaceExt(v.Filename, ".png")
+	interV.Filename = pathutil.ReplaceExt(v.Filename, ".inter.webp")
 	destV := interV
 	destV.Filename = pathutil.ReplaceExt(v.Filename, ".webp")
 

@@ -2,6 +2,7 @@ package dto
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 type Asset struct {
@@ -25,6 +26,9 @@ func (v Variant) String() string {
 }
 func (v Variant) Path() string {
 	return fmt.Sprintf("%s/%s/%s", v.Variant, v.Kind, v.Filename)
+}
+func (v Variant) ActualPath(dirPath string) string {
+	return filepath.Join(dirPath, v.Path())
 }
 func (v Variant) URL(api string) string {
 	return fmt.Sprintf("%s/asset/variants/%s/%s/%s", api, v.Kind, v.Name, v.Variant)

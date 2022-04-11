@@ -7,6 +7,7 @@ import (
 
 	"github.com/cavaliergopher/grab/v3"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/dto"
+	"github.com/flandiayingman/arkwaifu-2x/internal/app/verify"
 	"github.com/go-resty/resty/v2"
 	. "github.com/samber/lo"
 )
@@ -49,10 +50,19 @@ func GetAssetsUpscalable() ([]dto.Asset, error) {
 }
 
 func GetVariants(assets []dto.Asset, dstDir string) (<-chan dto.Variant, <-chan error, error) {
-	requests := Map(assets, func(a dto.Asset, _ int) *grab.Request {
+	vChan := make(chan dto.Variant, len(assets))
+	errChan := make(chan error)
+
+	requests := Filter(Map(assets, func(a dto.Asset, _ int) *grab.Request {
 		v := a.Variants["img"]
 		url := v.FileURL(apiUrl)
-		dst := filepath.Join(dstDir, v.Path())
+		dst := v.ActualPath(dstDir)
+
+		done, _ := verify.Verify(dst)
+		if done {
+			vChan <- v
+			return nil
+		}
 
 		req, err := grab.NewRequest(dst, url)
 		if err != nil {
@@ -61,16 +71,19 @@ func GetVariants(assets []dto.Asset, dstDir string) (<-chan dto.Variant, <-chan 
 
 		req.Tag = v
 		return req
-	})
+	}), func(r *grab.Request, _ int) bool { return r != nil })
 	respChan := gClient.DoBatch(8, requests...)
 
-	vChan := make(chan dto.Variant, len(assets))
-	errChan := make(chan error)
 	go func() {
 		defer close(vChan)
 		defer close(errChan)
 		for resp := range respChan {
 			err := resp.Err()
+			if err != nil {
+				errChan <- err
+				return
+			}
+			err = verify.Done(resp.Filename)
 			if err != nil {
 				errChan <- err
 				return

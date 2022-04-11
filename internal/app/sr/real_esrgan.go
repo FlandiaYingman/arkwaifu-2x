@@ -11,6 +11,7 @@ import (
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/dto"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/executil"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/pathutil"
+	"github.com/flandiayingman/arkwaifu-2x/internal/app/verify"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/vips"
 	"go.uber.org/zap"
 )
@@ -69,6 +70,11 @@ func (m *esrgan) Up(v dto.Variant, dir string) (dto.Variant, error) {
 	interPath := filepath.Join(dir, interV.Path())
 	destPath := filepath.Join(dir, destV.Path())
 
+	done, _ := verify.Verify(destPath)
+	if done {
+		return destV, nil
+	}
+
 	params := append(m.Params, "-i", srcPath, "-o", interPath)
 	cmd := exec.Command(esrganExec, params...)
 
@@ -83,6 +89,11 @@ func (m *esrgan) Up(v dto.Variant, dir string) (dto.Variant, error) {
 	defer func() { _ = os.Remove(interPath) }()
 
 	err = vips.ConvertToWebp(interPath, destPath)
+	if err != nil {
+		return dto.Variant{}, err
+	}
+
+	err = verify.Done(destPath)
 	if err != nil {
 		return dto.Variant{}, err
 	}

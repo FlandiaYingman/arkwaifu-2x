@@ -12,6 +12,7 @@ import (
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/dirutil"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/executil"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/pathutil"
+	"github.com/flandiayingman/arkwaifu-2x/internal/app/verify"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/vips"
 	"go.uber.org/zap"
 )
@@ -80,6 +81,11 @@ func (m *cugan) Up(v dto.Variant, dir string) (dto.Variant, error) {
 		return dto.Variant{}, err
 	}
 
+	done, _ := verify.Verify(destPath)
+	if done {
+		return destV, nil
+	}
+
 	params := append(m.Params, "-i", srcPath, "-o", interPath)
 	cmd := exec.Command(cuganExec, params...)
 
@@ -94,6 +100,11 @@ func (m *cugan) Up(v dto.Variant, dir string) (dto.Variant, error) {
 	defer func() { _ = os.Remove(interPath) }()
 
 	err = vips.ConvertToWebp(interPath, destPath)
+	if err != nil {
+		return dto.Variant{}, err
+	}
+
+	err = verify.Done(destPath)
 	if err != nil {
 		return dto.Variant{}, err
 	}

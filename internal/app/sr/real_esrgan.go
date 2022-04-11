@@ -1,18 +1,11 @@
 package sr
 
 import (
-	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 
-	"github.com/flandiayingman/arkwaifu-2x/internal/app/dto"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/executil"
-	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/pathutil"
-	"github.com/flandiayingman/arkwaifu-2x/internal/app/verify"
-	"github.com/flandiayingman/arkwaifu-2x/internal/app/vips"
 	"go.uber.org/zap"
 )
 
@@ -28,75 +21,47 @@ func init() {
 		return
 	}
 	if err != nil {
-		zap.S().Errorw("Failed to add vips to PATH", "error", err)
+		zap.S().Errorw("Failed to add esrgan to PATH", "error", err)
 		return
 	}
 
 	_, err = exec.LookPath(esrganExec)
 	if err != nil {
-		zap.S().Errorw("Failed to search for vips in PATH", "error", err)
+		zap.S().Errorw("Failed to search for esrgan in PATH", "error", err)
 		return
 	}
 }
 
 type esrgan struct {
 	Name   string
+	Exec   string
 	Params []string
 }
 
 const esrganExec = "realesrgan-ncnn-vulkan"
 
-func newEsrgan() (Model, error) {
-	m := esrgan{}
-	m.Name = "real-esrgan"
-	m.Params = []string{
-		// "-j", "1:1:1"
+func newEsrgan() (model, error) {
+	m := esrgan{
+		Name:   "real-esrgan",
+		Exec:   esrganExec,
+		Params: []string{
+			// "-j", "1:1:1",
+		},
 	}
-	log.Debugw("created real-esrgan model",
-		"model", m,
-	)
+	log.Debugw("created real-esrgan model", "model", m)
 	return &m, nil
 }
 
-func (m *esrgan) Up(v dto.Variant, dir string) (dto.Variant, error) {
-	srcV := v
-	interV := srcV
-	interV.Variant = m.Name
-	interV.Filename = pathutil.ReplaceExt(v.Filename, ".inter.webp")
-	destV := interV
-	destV.Filename = pathutil.ReplaceExt(v.Filename, ".webp")
+func (m *esrgan) ModelName() string {
+	return m.Name
+}
 
-	srcPath := filepath.Join(dir, srcV.Path())
-	interPath := filepath.Join(dir, interV.Path())
-	destPath := filepath.Join(dir, destV.Path())
-
-	done, _ := verify.Verify(destPath)
-	if done {
-		return destV, nil
-	}
-
-	params := append(m.Params, "-i", srcPath, "-o", interPath)
-	cmd := exec.Command(esrganExec, params...)
-
-	output, err := cmd.CombinedOutput()
+func (m *esrgan) upscale(src, dst string) error {
+	executable := m.Exec
+	params := append(m.Params, "-i", src, "-o", dst)
+	err := executil.Execute(m.ModelName(), executable, params...)
 	if err != nil {
-		return dto.Variant{}, err
+		return err
 	}
-	err = executil.ScanOutput(m.Name, bytes.NewReader(output))
-	if err != nil {
-		return dto.Variant{}, err
-	}
-	defer func() { _ = os.Remove(interPath) }()
-
-	err = vips.ConvertToWebp(interPath, destPath)
-	if err != nil {
-		return dto.Variant{}, err
-	}
-
-	err = verify.Done(destPath)
-	if err != nil {
-		return dto.Variant{}, err
-	}
-
-	return destV, nil
+	return nil
 }

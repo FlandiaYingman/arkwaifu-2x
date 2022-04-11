@@ -19,12 +19,12 @@ var (
 
 func init() {
 	Models = map[string]Model{
-		ModelRealEsrgan: newModelMust(ModelRealEsrgan),
-		ModelRealCugan:  newModelMust(ModelRealCugan),
+		ModelRealEsrgan: {newModelMust(ModelRealEsrgan)},
+		ModelRealCugan:  {newModelMust(ModelRealCugan)},
 	}
 }
 
-func newModel(name string) (Model, error) {
+func newModel(name string) (model, error) {
 	switch name {
 	case ModelRealEsrgan:
 		model, err := newEsrgan()
@@ -35,7 +35,7 @@ func newModel(name string) (Model, error) {
 	}
 	return nil, fmt.Errorf("model %s not found", name)
 }
-func newModelMust(name string) Model {
+func newModelMust(name string) model {
 	model, err := newModel(name)
 	if err != nil {
 		log.Panicw("failed to create model",

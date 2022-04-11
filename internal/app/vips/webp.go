@@ -1,7 +1,6 @@
 package vips
 
 import (
-	"bytes"
 	"os"
 	"os/exec"
 
@@ -30,23 +29,14 @@ func ConvertToWebp(srcPath string, dstPath string) error {
 	// See:
 	// https://www.libvips.org/API/current/using-cli.html
 	// https://www.libvips.org/API/current/VipsForeignSave.html
-
 	format := "[Q=100,preset=VIPS_FOREIGN_WEBP_PRESET_PICTURE,strip]"
-	cmd := exec.Command(vipsExec, "copy", srcPath, dstPath+format)
-
-	output, err := cmd.CombinedOutput()
+	err := executil.Execute("vips", vipsExec, "copy", srcPath, dstPath+format)
 	if err != nil {
 		return err
 	}
-	err = executil.ScanOutput("vips", bytes.NewReader(output))
-	if err != nil {
-		return err
-	}
-
 	err = os.Remove(srcPath)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

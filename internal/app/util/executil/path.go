@@ -1,13 +1,9 @@
 package executil
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-
-	"go.uber.org/zap"
 )
 
 func AddPath(path string) error {
@@ -23,12 +19,4 @@ func AddPath(path string) error {
 		return err
 	}
 	return nil
-}
-
-func ScanOutput(name string, output io.Reader) error {
-	scanner := bufio.NewScanner(output)
-	for scanner.Scan() {
-		zap.S().Debugf("%s> %s", name, scanner.Text())
-	}
-	return scanner.Err()
 }

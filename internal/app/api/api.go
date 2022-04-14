@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/verify"
 	"github.com/go-resty/resty/v2"
 	. "github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 )
 
 var rClient = resty.New()
@@ -98,33 +100,40 @@ func GetVariants(assets []dto.Asset, dstDir string) (<-chan dto.Variant, <-chan 
 func PostVariants(variants []dto.Variant, dir string) (<-chan dto.Variant, <-chan error, error) {
 	lock := make(chan struct{}, 8)
 	vChan := make(chan dto.Variant, len(variants))
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(vChan)
 		defer close(errChan)
+		eg, ctx := errgroup.WithContext(context.TODO())
+	variantLoop:
 		for _, v := range variants {
-			lock <- struct{}{}
-			go func(v dto.Variant) {
-				url := fmt.Sprintf(v.URL(apiUrl))
-				resp, err := rClient.
-					R().
-					SetFile("file", filepath.Join(dir, v.Path())).
-					Post(url)
-
-				if err != nil {
-					errChan <- err
-					return
-				}
-
-				if !resp.IsSuccess() {
-					errChan <- fmt.Errorf("response %s not success", resp.String())
-					return
-				}
-
-				vChan <- v
-				<-lock
-			}(v)
+			v := v
+			select {
+			case lock <- struct{}{}:
+				eg.Go(func() error {
+					defer func() { <-lock }()
+					url := fmt.Sprintf(v.URL(apiUrl))
+					resp, err := rClient.
+						R().
+						SetFile("file", filepath.Join(dir, v.Path())).
+						Post(url)
+					if err != nil {
+						return err
+					}
+					if !resp.IsSuccess() {
+						return fmt.Errorf("response %q not success", resp)
+					}
+					vChan <- v
+					return nil
+				})
+			case <-ctx.Done():
+				break variantLoop
+			}
+		}
+		err := eg.Wait()
+		if err != nil {
+			errChan <- err
 		}
 	}()
 	return vChan, errChan, nil

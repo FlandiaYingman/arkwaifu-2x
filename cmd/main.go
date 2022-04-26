@@ -1,10 +1,15 @@
 package main
 
 // This import must be first. Because we wanna logger be initialized first.
-import _ "github.com/flandiayingman/arkwaifu-2x/internal/app/log"
+import (
+	"runtime"
+
+	"github.com/flandiayingman/arkwaifu-2x/internal/app"
+	_ "github.com/flandiayingman/arkwaifu-2x/internal/app/log"
+	"github.com/panjf2000/ants/v2"
+)
 
 import (
-	"github.com/flandiayingman/arkwaifu-2x/internal/app"
 	"go.uber.org/zap"
 )
 
@@ -12,22 +17,57 @@ func main() {
 	log := zap.S()
 	defer func() { _ = log.Sync() }()
 
-	assets, err := app.FetchAssets()
+	err := Run()
 	if err != nil {
-		log.Panic(err)
-		return
+		log.Error(err)
 	}
-	if len(assets) == 0 {
-		return
+}
+
+func Run() (err error) {
+	defer func() {
+		if err != nil {
+			return
+		}
+		if err0 := recover(); err0 != nil {
+			if _, ok := err0.(error); ok {
+				err = err0.(error)
+			}
+		}
+	}()
+
+	inPool, err := ants.NewPool(8)
+	if err != nil {
+		return err
+	}
+	procPool, err := ants.NewPool(runtime.NumCPU())
+	if err != nil {
+		return err
+	}
+	outPool, err := ants.NewPool(8)
+	if err != nil {
+		return err
 	}
 
-	variants, err := app.UpscaleAssets(assets)
-	if err != nil {
-		log.Panic(err)
+	var task func()
+	task = func() {
+		fetchTask := app.CreateTask(&app.Dir)
+		upscaleTask := fetchTask.ToUpscaleTask()
+		err := procPool.Submit(func() {
+			upscaleTask.Run()
+			submitTask := upscaleTask.ToSubmitTask()
+			err := outPool.Submit(func() {
+				submitTask.Run()
+			})
+			panic(err)
+		})
+		if err != nil {
+			panic(err)
+		}
 	}
-
-	err = app.SubmitAssets(variants)
-	if err != nil {
-		log.Panic(err)
+	for {
+		err = inPool.Submit(task)
+		if err != nil {
+			panic(err)
+		}
 	}
 }

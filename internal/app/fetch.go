@@ -1,67 +1,74 @@
 package app
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/api"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/dto"
-	"github.com/pterm/pterm"
+	"go.uber.org/zap"
 )
 
-func FetchAssets() ([]dto.Asset, error) {
-	assets, err := fetchAssets()
-	if err != nil {
-		return nil, err
-	}
-	if len(assets) == 0 {
-		pterm.Info.Println("No upscalable assets found. Exiting...")
-		return nil, nil
-	}
-
-	_, err = fetchVariants(assets)
-	if err != nil {
-		return nil, err
-	}
-
-	return assets, nil
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
-func fetchAssets() ([]dto.Asset, error) {
-	spinner, _ := spinner.Start("Fetching the assets metadata from the server...")
-
-	assets, err := api.GetAssetsUpscalable()
-	upscalable, err := api.GetAssetsUpscalable()
-	if err != nil {
-		_ = spinner.Stop()
-		pterm.Error.Println("Failed to fetch the assets metadata from the server.")
-		return nil, err
-	}
-
-	_ = spinner.Stop()
-	pterm.Success.Println("Successfully fetched the assets metadata.")
-	pterm.Info.Printfln("Total assets: %d. Upscalable assets: %d", len(assets), len(upscalable))
-	return upscalable, nil
+type FetchTask struct {
+	total     int
+	remaining int
+	asset     dto.Asset
+	dstDir    *string
 }
-func fetchVariants(assets []dto.Asset) ([]dto.Variant, error) {
-	progressbar, _ := progressbar.
-		WithTitle("Fetching the assets file from the server...").
-		WithTotal(len(assets)).
-		Start()
 
-	vChan, errChan, err := api.GetVariants(assets, dir)
+func CreateTask(dstDir *string) *FetchTask {
+	assets, upscalableAssets, err := api.GetAssetsUpscalable()
 	if err != nil {
-		return nil, err
+		zap.S().Warnw("Failed to fetch assets.",
+			"error", err,
+		)
+		return nil
 	}
+	// Select asset randomly to avoid 'race' to some degree.
+	// The 'race' refers to, like, multiple clients are upscaling the same asset,
+	// though at last they will get the same result, it's just a waste of time.
+	a := upscalableAssets[rand.Intn(len(upscalableAssets))]
+	t := &FetchTask{asset: a, dstDir: dstDir}
+	zap.S().Infof("Processing the asset %s, remaning/total: %d/%d", a, len(upscalableAssets), len(assets))
 
-	vs := make([]dto.Variant, 0, len(assets))
-	for v := range vChan {
-		vs = append(vs, v)
-		progressbar.Increment()
+	err = api.GetVariants(t.asset, *t.dstDir)
+	if err != nil {
+		zap.S().Warnw("Failed to fetch variants of asset",
+			"asset", t.asset,
+			"error", err,
+		)
+		return nil
 	}
-	if err, _ := <-errChan; err != nil {
-		_, _ = progressbar.Stop()
-		pterm.Error.Printfln("Failed to fetch the assets files.")
-		return nil, err
-	}
+	zap.S().Infow("Fetched variants of asset",
+		"asset", t.asset,
+	)
+	return t
+}
 
-	pterm.Success.Println("Successfully fetched the assets files.")
-	return vs, nil
+func (t *FetchTask) ToUpscaleTask() *UpscaleTask {
+	imgV := t.asset.Variants["img"]
+	alphaV, hasAlpha := t.asset.Variants["alpha"]
+	dstVs := make([]*dto.Variant, 0)
+	for _, v := range t.asset.UpscalableVariants {
+		v := v
+		dstVs = append(dstVs, &v)
+	}
+	if hasAlpha {
+		return &UpscaleTask{
+			colorVariant: &imgV,
+			alphaVariant: &alphaV,
+			dstVariant:   dstVs,
+			dstDir:       t.dstDir,
+		}
+	} else {
+		return &UpscaleTask{
+			colorVariant: &imgV,
+			dstVariant:   dstVs,
+			dstDir:       t.dstDir,
+		}
+	}
 }

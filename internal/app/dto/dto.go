@@ -2,6 +2,7 @@ package dto
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 )
 
@@ -31,8 +32,8 @@ func (v Variant) ActualPath(dirPath string) string {
 	return filepath.Join(dirPath, v.Path())
 }
 func (v Variant) URL(api string) string {
-	return fmt.Sprintf("%s/asset/variants/%s/%s/%s", api, v.Kind, v.Name, v.Variant)
+	return fmt.Sprintf("%s/asset/variants/%s/%s/%s", api, url.PathEscape(v.Kind), url.PathEscape(v.Name), url.PathEscape(v.Variant))
 }
 func (v Variant) FileURL(api string) string {
-	return fmt.Sprintf("%s/asset/variants/%s/%s/%s/file", api, v.Kind, v.Name, v.Variant)
+	return fmt.Sprintf("%s/asset/variants/%s/%s/%s/file", api, url.PathEscape(v.Kind), url.PathEscape(v.Name), url.PathEscape(v.Variant))
 }

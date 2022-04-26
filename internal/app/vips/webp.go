@@ -3,6 +3,8 @@ package vips
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/util/executil"
 	"go.uber.org/zap"
@@ -30,6 +32,7 @@ func ConvertToWebp(srcPath string, dstPath string) error {
 	// https://www.libvips.org/API/current/using-cli.html
 	// https://www.libvips.org/API/current/VipsForeignSave.html
 	format := "[Q=100,preset=VIPS_FOREIGN_WEBP_PRESET_PICTURE,strip]"
+	srcPath, dstPath = filepath.ToSlash(srcPath), filepath.ToSlash(dstPath)
 	err := executil.Execute("vips", vipsExec, "copy", srcPath, dstPath+format)
 	if err != nil {
 		return err
@@ -38,5 +41,27 @@ func ConvertToWebp(srcPath string, dstPath string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func MergeAlpha(colorPath, alphaPath, dstPath string) error {
+	var err error
+	format := "[Q=100,preset=VIPS_FOREIGN_WEBP_PRESET_PICTURE,strip]"
+	colorPath, alphaPath, dstPath = filepath.ToSlash(colorPath), filepath.ToSlash(alphaPath), filepath.ToSlash(dstPath)
+
+	tmpAlpha := alphaPath + ".tmp.v"
+	defer func() { _ = os.Remove(tmpAlpha) }()
+
+	err = executil.Execute("vips", vipsExec, "colourspace", alphaPath, tmpAlpha, "VIPS_INTERPRETATION_B_W")
+	if err != nil {
+		return err
+	}
+
+	bands := strings.Join([]string{colorPath, tmpAlpha}, " ")
+	err = executil.Execute("vips", vipsExec, "bandjoin", bands, dstPath+format)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

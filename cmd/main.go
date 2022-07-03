@@ -2,7 +2,7 @@ package main
 
 // This import must be first. Because we wanna logger be initialized first.
 import (
-	"runtime"
+	"time"
 
 	"github.com/flandiayingman/arkwaifu-2x/internal/app"
 	_ "github.com/flandiayingman/arkwaifu-2x/internal/app/log"
@@ -35,15 +35,15 @@ func Run() (err error) {
 		}
 	}()
 
-	inPool, err := ants.NewPool(8)
+	inPool, err := ants.NewPool(1)
 	if err != nil {
 		return err
 	}
-	procPool, err := ants.NewPool(runtime.NumCPU())
+	procPool, err := ants.NewPool(2)
 	if err != nil {
 		return err
 	}
-	outPool, err := ants.NewPool(8)
+	outPool, err := ants.NewPool(4)
 	if err != nil {
 		return err
 	}
@@ -51,6 +51,10 @@ func Run() (err error) {
 	var task func()
 	task = func() {
 		fetchTask := app.CreateTask(&app.Dir)
+		if fetchTask == nil {
+			time.Sleep(15 * time.Second)
+			return
+		}
 		upscaleTask := fetchTask.ToUpscaleTask()
 		err := procPool.Submit(func() {
 			upscaleTask.Run()

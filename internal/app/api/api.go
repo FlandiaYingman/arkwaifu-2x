@@ -29,6 +29,7 @@ func init() {
 func GetAssets() ([]dto.Asset, error) {
 	resp, err := rClient.
 		R().
+		SetHeader("Cache-Control", "no-cache").
 		Get(assetsUrl)
 	if err != nil {
 		return nil, err

@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	err := executil.AddPath("tools/vips-dev-8.12/bin")
+	err := executil.AddPath("tools/vips-dev-8.13/bin")
 	if err != nil {
 		zap.S().Errorw("Failed to add vips to PATH", "error", err)
 		return

@@ -13,9 +13,9 @@ func init() {
 	var err error
 	switch runtime.GOOS {
 	case "windows":
-		err = executil.AddPath("./tools/realcugan-ncnn-vulkan-20220318-windows")
+		err = executil.AddPath("./tools/realcugan-ncnn-vulkan-20220728-windows")
 	case "linux":
-		err = executil.AddPath("./tools/realcugan-ncnn-vulkan-20220318-ubuntu")
+		err = executil.AddPath("./tools/realcugan-ncnn-vulkan-20220728-ubuntu")
 	default:
 		log.Panic(fmt.Errorf("unsupported OS: %s", runtime.GOOS))
 		return

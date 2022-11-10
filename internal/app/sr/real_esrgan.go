@@ -13,9 +13,9 @@ func init() {
 	var err error
 	switch runtime.GOOS {
 	case "windows":
-		err = executil.AddPath("./tools/realesrgan-ncnn-vulkan-20211212-windows")
+		err = executil.AddPath("./tools/realesrgan-ncnn-vulkan-20220424-windows")
 	case "linux":
-		err = executil.AddPath("./tools/realesrgan-ncnn-vulkan-20211212-ubuntu")
+		err = executil.AddPath("./tools/realesrgan-ncnn-vulkan-20220424-ubuntu")
 	default:
 		log.Panic(fmt.Errorf("unsupported OS: %s", runtime.GOOS))
 		return
@@ -42,8 +42,8 @@ const esrganExec = "realesrgan-ncnn-vulkan"
 
 func newEsrgan() (model, error) {
 	m := esrgan{
-		Name:   "real-esrgan",
-		Exec:   esrganExec,
+		Name: "real-esrgan",
+		Exec: esrganExec,
 		Params: []string{
 			// "-j", "1:1:1",
 		},

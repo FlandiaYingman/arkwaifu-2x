@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/cavaliergopher/grab/v3"
 	"github.com/flandiayingman/arkwaifu-2x/internal/app/dto"
@@ -15,12 +16,8 @@ import (
 var rClient = resty.New()
 var gClient = grab.NewClient()
 
-// TODO: Get it from the environment variables.
-const apiUrl = "http://127.0.0.1:7080/api/v0"
-
-var (
-	assetsUrl = fmt.Sprintf("%s/asset/assets", apiUrl)
-)
+var apiUrl = os.Getenv("API_URL")
+var assetsUrl = fmt.Sprintf("%s/asset/assets", apiUrl)
 
 func init() {
 	rClient.SetRetryCount(3)

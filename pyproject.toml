@@ -1,15 +1,29 @@
 [tool.poetry]
 name = "arkwaifu-2x"
-version = "0.1.0"
-description = "CLI management tool for Arkwaifu."
-authors = ["Flandia Yingman <flandia_yingm@hotmail.com>"]
+version = "1.0.1"
+description = "A CLI management tool for Arkwaifu."
 readme = "README.md"
-packages = [{include = "arkwaifu_2x"}]
+license = "MIT License"
+authors = ["Flandia Yingman <flandia_yingm@hotmail.com>"]
+packages = [{ include = "arkwaifu_2x", from = "src" }]
+
+[project.urls]
+Repository = "https://github.com/FlandiaYingman/arkwaifu-2x.git"
+
+[tool.poetry.scripts]
+arkwaifu-2x = "arkwaifu_2x.app:main"
 
 [tool.poetry.dependencies]
-python = "^3.10"
-typer = {extras = ["all"], version = "^0.9.0"}
+python = "^3.11"
 inquirer = "^3.1.3"
+requests = "^2.31.0"
+pillow = "^10.0.0"
+parse = "^1.19.1"
+rich = "^13.4.2"
+
+[tool.poetry.group.dev.dependencies]
+types-pillow = "^10.0.0.0"
+types-requests = "^2.31.0.1"
 
 [build-system]
 requires = ["poetry-core"]

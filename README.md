@@ -8,6 +8,8 @@ Arkwaifu 2x is a CLI tool for Arkwaifu. It supports the following features:
 This tool is created because the backend of Arkwaifu cannot handle hard works, like enlarging the arts with neutral
 networks. So Arkwaifu 2x takes the tasks in local, reducing pressure of the backend.
 
+![screenshot](https://github.com/FlandiaYingman/arkwaifu-2x/assets/9929037/bf23c573-e76e-4a96-9700-6326aa107450)
+
 # Usage
 
 > Prerequisites:

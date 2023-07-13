@@ -27,7 +27,7 @@ def get_arts_by_absent_variation(absent_variation: str) -> list[Art]:
 def put_variant(id: str, variation: str):
     requests.put(
         f"{API_URL}/arts/{urllib.parse.quote(id)}/variants/{urllib.parse.quote(variation)}",
-        params={'user': '82f87784-1d9e-11ee-be56-0242ac120002'},
+        params={'user': USER_TOKEN},
         data={'artID': id, 'variation': variation}
     ).raise_for_status()
 

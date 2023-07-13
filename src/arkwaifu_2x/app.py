@@ -90,7 +90,7 @@ def enlarge_arts(variation: str, model: real_esrgan.Model):
     with console.status(f"Finding the arts that have to be enlarged to [cyan]{variation}[/]... "):
         arts = arkwaifu.get_arts_by_absent_variation(variation)
 
-    if len(arts) >= 0:
+    if len(arts) > 0:
         console.log(f"Found {len(arts)} arts that have to be enlarged to [cyan]{variation}[/].")
     else:
         console.log(f"No arts that have to be enlarged to [cyan]{variation}[/]. Exit.")

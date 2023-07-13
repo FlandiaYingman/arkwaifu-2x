@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, TypeAlias, Callable
 
 import inquirer
 from PIL import Image
+from PIL.Image import Resampling
 from rich.console import Console, Group
 from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, BarColumn, MofNCompleteColumn, TaskProgressColumn, TimeElapsedColumn, \
@@ -146,10 +147,73 @@ def enlarge_arts(variation: str, model: real_esrgan.Model):
             executor.shutdown(cancel_futures=True, wait=True)
 
 
+def generate_art_thumbnail(origin_path: StrOrBytesPath) -> StrOrBytesPath:
+    try:
+        with Image.open(origin_path) as image, NamedTemporaryFile(suffix=".webp", delete=False) as temporary_file:
+            image.thumbnail((360, 360 * 4), Resampling.LANCZOS)
+            image.save(temporary_file, quality=75)
+            return temporary_file.name
+    finally:
+        os.remove(origin_path)
+
+
+def regenerate_thumbnails():
+    with console.status(f"Finding all arts... "):
+        arts = arkwaifu.get_arts()
+
+    console.log(f"Found {len(arts)} arts.")
+
+    total_progress = create_total_progress()
+    sub_progress = create_sub_progress()
+
+    console.log(f"Start to re-generate thumbnails of {len(arts)} arts. ")
+    console.log(f"Note: the ETA may be inaccurate. ")
+    with Live(Group(total_progress, sub_progress), console=console, transient=True):
+        executor = ThreadPoolExecutor(os.cpu_count() * 2)
+
+        def worker(id: str):
+            sub_task_id = sub_progress.add_task("")
+            try:
+                def progress(percentage: float):
+                    sub_progress.update(sub_task_id, completed=percentage)
+
+                sub_progress.update(sub_task_id, description=f"Fetching art: [cyan]{id}[/]... ")
+                progress(0.0)
+                fetched_art = fetch_art(id)
+
+                sub_progress.update(sub_task_id, description=f"Generating thumbnail of art: [cyan]{id}[/]... ", )
+                progress(0.0)
+                thumbnail_path = generate_art_thumbnail(fetched_art)
+
+                sub_progress.update(sub_task_id, description=f"Submitting art: [cyan]{id}[/]... ", )
+                progress(0.0)
+                submit_art(thumbnail_path, id, 'thumbnail')
+            except KeyboardInterrupt:
+                executor.shutdown(wait=False, cancel_futures=True)
+            finally:
+                sub_progress.remove_task(sub_task_id)
+
+        try:
+            total_task_id = total_progress.add_task(f"Re-generating thumbnails of arts... ", total=len(arts))
+            futures = [executor.submit(worker, art.id) for art in arts]
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception:
+                    console.print_exception(width=None)
+                finally:
+                    total_progress.advance(total_task_id)
+        except KeyboardInterrupt:
+            console.log("[red]Keyboard Interrupt: Waiting for current progresses to complete... [/]")
+        finally:
+            executor.shutdown(cancel_futures=True, wait=True)
+
+
 def main():
     choices = [
         "1. Enlarge the Arts with real-esrgan(realesrgan-x4plus).",
-        "2. Enlarge the Arts with real-esrgan(realesrgan-x4plus-anime)."
+        "2. Enlarge the Arts with real-esrgan(realesrgan-x4plus-anime).",
+        "3. Re-generate thumbnails for all arts."
     ]
     choice = inquirer.list_input("What would you like to do with Arkwaifu 2x? ", choices=choices)
     match choices.index(choice):
@@ -157,3 +221,5 @@ def main():
             enlarge_arts("real-esrgan(realesrgan-x4plus)", Model.REALESRGAN_X4PLUS)
         case 1:
             enlarge_arts("real-esrgan(realesrgan-x4plus-anime)", Model.REALESRGAN_X4PLUS_ANIME)
+        case 2:
+            regenerate_thumbnails()

@@ -16,6 +16,13 @@ API_URL: Final[str] = "https://arkwaifu.cc/api/v1"
 USER_TOKEN: Final[str] = os.environ["USER_TOKEN"]
 
 
+def get_arts() -> list[Art]:
+    response = requests.get(
+        f"{API_URL}/arts",
+    )
+    return [Art.from_dict(x) for x in response.json()]
+
+
 def get_arts_by_absent_variation(absent_variation: str) -> list[Art]:
     response = requests.get(
         f"{API_URL}/arts",

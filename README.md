@@ -4,6 +4,7 @@ Arkwaifu 2x is a CLI tool for Arkwaifu. It supports the following features:
 
 1. Enlarge the Arts with *real-esrgan(realesrgan-x4plus)*.
 2. Enlarge the Arts with *real-esrgan(realesrgan-x4plus-anime)*.
+3. Re-generate thumbnails for all arts.
 
 This tool is created because the backend of Arkwaifu cannot handle hard works, like enlarging the arts with neutral
 networks. So Arkwaifu 2x takes the tasks in local, reducing pressure of the backend.

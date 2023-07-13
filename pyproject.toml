@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arkwaifu-2x"
-version = "1.0.1"
+version = "1.1.0"
 description = "A CLI management tool for Arkwaifu."
 readme = "README.md"
 license = "MIT License"
